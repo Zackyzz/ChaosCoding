@@ -1,5 +1,7 @@
 #lang racket/gui
-(require "../helpers/bitwr.rkt" "DCT.rkt" "Chaos.rkt")
+(require "DCT.rkt" "Chaos.rkt")
+
+(define SIZE 512)
 
 (define (get-matrix buffer)
   (for/vector ([i SIZE])
@@ -66,9 +68,9 @@
             (send gauge-process set-value 0)
             (send encode-bitmap get-argb-pixels 0 0 SIZE SIZE encode-buffer)
             (set! original-matrix (get-matrix encode-buffer))
-            (set! ranges (get-ranges original-matrix))
-            (define dct-ranges (map DCT (map first ranges)))
-            (define dcted-matrix (blocks->image-matrix dct-ranges))
+            (define blocks (get-blocks original-matrix))
+            (define dct-blocks (map DCT blocks))
+            (define dcted-matrix (cropped-blocks->matrix (map crop-block dct-blocks)))
             (set! ranges (get-ranges dcted-matrix))
             (set! domains (get-domains dcted-matrix))))]))
 
@@ -114,7 +116,7 @@
         (λ (button event)
           (when founds
             (define blocks (decode founds (get-decoding-domains fractal-matrix)))
-            (set! fractal-matrix (blocks->image-matrix blocks))))]))
+            (set! fractal-matrix (cropped-blocks->matrix blocks))))]))
 
 (define (normalize x)
   (set! x (exact-round x))
@@ -123,15 +125,15 @@
 (define (matrix->bytes matrix)
   (list->bytes (apply append (map (λ(x) (list 255 x x x)) (flatten-matrix matrix)))))
 
+(define idcted-matrix #f)
 (define finalize-button
   (new button%
        [parent decode-panel]
        [label "Finalize"]
        [callback
         (λ (button event)
-          (define temps (get-ranges fractal-matrix))
-          (define idcted-ranges (map IDCT (map first temps)))
-          (define idcted-matrix (blocks->image-matrix idcted-ranges))
+          (define dcted-blocks (map padd-block (map first (get-ranges fractal-matrix))))
+          (set! idcted-matrix (blocks->image-matrix (map IDCT dcted-blocks)))
           (set! idcted-matrix
                 (for/vector ([i SIZE])
                   (for/vector ([j SIZE])

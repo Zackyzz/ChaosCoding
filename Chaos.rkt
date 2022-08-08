@@ -1,8 +1,7 @@
 #lang racket
 (provide (all-defined-out))
 
-(define SIZE 512)
-(define n 64)
+(define n 9)
 
 (define (matrix-get matrix i j)
   (vector-ref (vector-ref matrix i) j))
@@ -13,7 +12,16 @@
 (define (flatten-matrix matrix)
   (vector->list (apply vector-append (vector->list matrix))))
 
-(define (get-ranges matrix [nr 64] [size 8] [step 8])
+(define (get-blocks matrix [nr 64] [size 8] [step 8])
+  (apply
+   append
+   (for/list ([i (in-range 0 (* nr step) step)])
+     (for/list ([j (in-range 0 (* nr step) step)])
+       (for/vector ([a (in-range i (+ i size))])
+         (for/vector ([b (in-range j (+ j size))])
+           (matrix-get matrix a b)))))))
+
+(define (get-ranges matrix [nr 64] [size 3] [step 3])
   (apply
    append
    (for/list ([i (in-range 0 (* nr step) step)])
@@ -29,7 +37,7 @@
              bi)))
        (list block sum sum^2)))))
 
-(define (make-isometry matrix iso [size 8])
+(define (make-isometry matrix iso [size 3])
   (for/vector ([i size])
     (for/vector ([j size])
       (cond
@@ -42,7 +50,7 @@
         [(= iso 6) (matrix-get matrix (- size 1 i) (- size 1 j))]
         [(= iso 7) (matrix-get matrix j (- size 1 i))]))))
 
-(define (get-domains matrix [nr 63] [size 16] [step 8])
+(define (get-domains matrix [nr 63] [size 6] [step 3])
   (apply
    append
    (for/list ([i (in-range 0 (* nr step) step)])
@@ -52,8 +60,8 @@
         (define sum 0)
         (define sum^2 0)
         (define block
-          (for/vector ([a (in-range i (+ i 8))])
-            (for/vector ([b (in-range j (+ j 8))])
+          (for/vector ([a (in-range i (+ i 3))])
+            (for/vector ([b (in-range j (+ j 3))])
               (define bi
                 (quotient (+ (matrix-get matrix a b)
                              (matrix-get matrix a (+ step b))
@@ -63,9 +71,8 @@
               (set! sum (+ sum bi))
               (set! sum^2 (+ sum^2 (sqr bi)))
               bi)))
-        (for/list ([i 8])
-          (list (make-isometry block i)
-                sum sum^2)))))))
+        (list (list block
+                    sum sum^2)))))))
 
 (define (search-range lrange domains)
   (define range (first lrange))
@@ -95,7 +102,7 @@
     (when p-gauge (send p-gauge set-value (add1 (send p-gauge get-value))))
     (search-range i domains)))
 
-(define (get-decoding-domains matrix [nr 63] [size 16] [step 8])
+(define (get-decoding-domains matrix [nr 63] [size 6] [step 3])
   (list->vector
    (apply
     append
@@ -104,30 +111,52 @@
        append
        (for/list ([j (in-range 0 (* nr step) step)])
          (define block
-           (for/vector ([a (in-range i (+ i 8))])
-             (for/vector ([b (in-range j (+ j 8))])
+           (for/vector ([a (in-range i (+ i 3))])
+             (for/vector ([b (in-range j (+ j 3))])
                (quotient (+ (matrix-get matrix a b)
                             (matrix-get matrix a (+ step b))
                             (matrix-get matrix (+ step a) b)
                             (matrix-get matrix (+ step a) (+ step b)))
                          4))))
-         (for/list ([i 8]) (make-isometry block i))))))))
+         (list block)))))))
 
 (define (decode founds new-domains)
   (for/vector ([i founds])
     (define domain (vector-ref new-domains (first i)))
     (define s (second i))
     (define o (third i))
-    (for/vector ([i 8])
-      (for/vector ([j 8])
+    (for/vector ([i 3])
+      (for/vector ([j 3])
         (+ o (* s (matrix-get domain i j)))))))
 
 (define (blocks->image-matrix blocks)
-  (define new-matrix (for/vector ([i SIZE]) (make-vector SIZE)))
+  (define new-matrix (for/vector ([i 512]) (make-vector 512)))
   (for ([block blocks] [index (in-naturals)])
     (define row (quotient index 64))
     (define column (remainder index 64))
     (for ([i 8])
       (for ([j 8])
         (matrix-set new-matrix (+ (* 8 row) i) (+ (* 8 column) j) (exact-floor (matrix-get block i j))))))
+  new-matrix)
+
+(define (crop-block block)
+  (for/vector ([i 3])
+    (for/vector ([j 3])
+      (matrix-get block i j))))
+
+(define (padd-block block)
+  (define new-matrix (for/vector ([i 8]) (make-vector 8)))
+  (for ([i 3])
+    (for ([j 3])
+      (matrix-set new-matrix i j (matrix-get block i j))))
+  new-matrix)
+
+(define (cropped-blocks->matrix blocks)
+  (define new-matrix (for/vector ([i (* 3 64)]) (make-vector (* 3 64))))
+  (for ([block blocks] [index (in-naturals)])
+    (define row (quotient index 64))
+    (define column (remainder index 64))
+    (for ([i 3])
+      (for ([j 3])
+        (matrix-set new-matrix (+ (* 3 row) i) (+ (* 3 column) j) (exact-floor (matrix-get block i j))))))
   new-matrix)
