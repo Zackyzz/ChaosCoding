@@ -7,6 +7,12 @@
 (define (shift+ vec)
   (vector-map (λ(x) (+ x 128)) vec))
 
+(define (before-storming vec)
+  (vector-map (λ(x) (+ x 2048)) vec))
+
+(define (after-storming vec)
+  (vector-map (λ(x) (- x 2048)) vec))
+
 (define (matrix-get matrix i j)
   (vector-ref (vector-ref matrix i) j))
 
@@ -27,10 +33,11 @@
   (* sum 0.25 Ci Cj))
 
 (define (DCT block)
-  (define shifted-block (vector-map shift- block))
-  (for/vector ([i 8])
-    (for/vector ([j 8])
-      (DCT-pixel shifted-block i j))))
+  (set! block (vector-map shift- block))
+  (define dcted (for/vector ([i 8])
+                  (for/vector ([j 8])
+                    (DCT-pixel block i j))))
+  dcted)
 
 (define (IDCT-pixel block x y)
   (define sum 0)
@@ -44,11 +51,10 @@
   (* sum 0.25))
 
 (define (IDCT block)
-  (vector-map
-   shift+
-   (for/vector ([i 8])
-     (for/vector ([j 8])
-       (IDCT-pixel block i j)))))
+  (vector-map shift+
+              (for/vector ([i 8])
+                (for/vector ([j 8])
+                  (IDCT-pixel block i j)))))
 
 (define 8x8 (vector (vector 124 125 122 120 122 119 117 118)
                     (vector 121 121 120 119 119 120 120 118)
