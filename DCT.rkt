@@ -37,7 +37,7 @@
   (define dcted (for/vector ([i 8])
                   (for/vector ([j 8])
                     (DCT-pixel block i j))))
-  dcted)
+  (quantize dcted))
 
 (define (IDCT-pixel block x y)
   (define sum 0)
@@ -51,10 +51,11 @@
   (* sum 0.25))
 
 (define (IDCT block)
+  (set! block (dequantize block))
   (vector-map shift+
               (for/vector ([i 8])
                 (for/vector ([j 8])
-                  (IDCT-pixel block i j)))))
+                  (exact-round (IDCT-pixel block i j))))))
 
 (define 8x8 (vector (vector 124 125 122 120 122 119 117 118)
                     (vector 121 121 120 119 119 120 120 118)
@@ -64,3 +65,22 @@
                     (vector 143 142 143 142 140 139 139 139)
                     (vector 150 148 152 152 152 152 150 151)
                     (vector 156 159 158 155 158 158 157 156)))
+
+(define q-table (vector (vector 16 11 10 16 24 40 51 61)
+                        (vector 12 12 14 19 26 58 60 55)
+                        (vector 14 13 16 24 40 57 69 56)
+                        (vector 14 17 22 29 51 87 80 62)
+                        (vector 18 22 37 56 68 109 103 77)
+                        (vector 24 35 55 64 81 104 113 92)
+                        (vector 49 64 78 87 103 121 120 101)
+                        (vector 72 92 95 98 112 100 103 99)))
+
+(define (quantize block)
+  (for/vector ([i 8])
+    (for/vector ([j 8])
+      (exact-round (/ (matrix-get block i j) (matrix-get q-table i j))))))
+
+(define (dequantize block)
+  (for/vector ([i 8])
+    (for/vector ([j 8])
+      (* (matrix-get block i j) (matrix-get q-table i j)))))

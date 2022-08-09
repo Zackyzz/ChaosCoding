@@ -50,6 +50,7 @@
 
 (define ranges #f)
 (define domains #f)
+(define DCs #f)
 (define image-name #f)
 (define encode-buffer (make-bytes (* SIZE SIZE 4)))
 (define original-matrix #f)
@@ -70,6 +71,7 @@
             (set! original-matrix (get-matrix encode-buffer))
             (define blocks (get-blocks original-matrix))
             (define dct-blocks (map DCT blocks))
+            (set! DCs (map strip-DC dct-blocks))
             (define dcted-matrix (cropped-blocks->matrix (map crop-block dct-blocks)))
             (set! ranges (get-ranges dcted-matrix))
             (set! domains (get-domains dcted-matrix))))]))
@@ -133,6 +135,7 @@
        [callback
         (λ (button event)
           (define dcted-blocks (map padd-block (map first (get-ranges fractal-matrix))))
+          (back-DC dcted-blocks DCs)
           (set! idcted-matrix (blocks->image-matrix (map IDCT dcted-blocks)))
           (set! idcted-matrix
                 (for/vector ([i SIZE])

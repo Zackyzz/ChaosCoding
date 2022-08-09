@@ -61,13 +61,13 @@
         (define sum 0)
         (define sum^2 0)
         (define block
-          (for/vector ([a (in-range TL)])
-            (for/vector ([b (in-range TL)])
+          (for/vector ([a (in-range i (+ i TL))])
+            (for/vector ([b (in-range j (+ j TL))])
               (define bi
-                (quotient (+ (matrix-get matrix (+ i (* 2 a)) (+ i (* 2 b)))
-                             (matrix-get matrix (+ i (* 2 a)) (+ j (+ 1 (* 2 b))))
-                             (matrix-get matrix (+ i (+ 1 (* 2 a))) (+ j (* 2 b)))
-                             (matrix-get matrix (+ i (+ 1 (* 2 a))) (+ j (+ 1 (* 2 b)))))
+                (quotient (+ (matrix-get matrix a b)
+                             (matrix-get matrix a (+ step b))
+                             (matrix-get matrix (+ step a) b)
+                             (matrix-get matrix (+ step a) (+ step b)))
                           4))
               (set! sum (+ sum bi))
               (set! sum^2 (+ sum^2 (sqr bi)))
@@ -81,7 +81,7 @@
   (define sum-r^2 (third lrange))
   (let loop ([error (expt 2 30)] [index 0] [S 0] [O 0] [domains domains] [it 0])
     [cond
-      [(empty? domains) (list index S O)]
+      [(empty? domains) (list index (exact->inexact S) (exact->inexact O))]
       [else
        (define domain (caar domains))
        (define sum-d (cadar domains))
@@ -112,12 +112,12 @@
        append
        (for/list ([j (in-range 0 (* nr step) step)])
          (define block
-           (for/vector ([a (in-range TL)])
-             (for/vector ([b (in-range TL)])
-               (quotient (+ (matrix-get matrix (+ i (* 2 a)) (+ i (* 2 b)))
-                            (matrix-get matrix (+ i (* 2 a)) (+ j (+ 1 (* 2 b))))
-                            (matrix-get matrix (+ i (+ 1 (* 2 a))) (+ j (* 2 b)))
-                            (matrix-get matrix (+ i (+ 1 (* 2 a))) (+ j (+ 1 (* 2 b)))))
+           (for/vector ([a (in-range i (+ i TL))])
+             (for/vector ([b (in-range j (+ j TL))])
+               (quotient (+ (matrix-get matrix a b)
+                            (matrix-get matrix a (+ step b))
+                            (matrix-get matrix (+ step a) b)
+                            (matrix-get matrix (+ step a) (+ step b)))
                          4))))
          (list block)))))))
 
@@ -161,3 +161,12 @@
       (for ([j TL])
         (matrix-set new-matrix (+ (* TL row) i) (+ (* TL column) j) (exact-floor (matrix-get block i j))))))
   new-matrix)
+
+(define (strip-DC block)
+  (define DC (matrix-get block 0 0))
+  (matrix-set block 0 0 (matrix-get block 1 0))
+  DC)
+
+(define (back-DC blocks DCs)
+  (for ([block blocks] [DC DCs])
+    (matrix-set block 0 0 DC)))
