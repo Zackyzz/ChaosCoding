@@ -1,8 +1,6 @@
 #lang racket/gui
 (require "DCT.rkt" "Chaos.rkt")
 
-(define SIZE 512)
-
 (define (get-matrix buffer)
   (for/vector ([i SIZE])
     (for/vector ([j (in-range (add1 (* i 4 SIZE)) (add1 (* (add1 i) 4 SIZE)) 4)])
@@ -71,10 +69,10 @@
             (set! original-matrix (get-matrix encode-buffer))
             (define blocks (get-blocks original-matrix))
             (define dct-blocks (map DCT blocks))
-            (set! DCs (map strip-DC dct-blocks))
-            (define dcted-matrix (cropped-blocks->matrix (map crop-block dct-blocks)))
-            (set! ranges (get-ranges dcted-matrix))
-            (set! domains (get-domains dcted-matrix))))]))
+            (set! DCs (get-coefficients 0 0 dct-blocks))
+            (define DC-blocks (coefs->matrix DCs))
+            (set! ranges (get-ranges DC-blocks))
+            (set! domains (get-domains DC-blocks))))]))
 
 (define founds #f)
 (define process-button
@@ -86,9 +84,7 @@
           (when (and ranges domains)
             (set! founds
                   (time
-                   (let ([f (future (λ() (search-ranges (drop ranges 2048) domains)))])
-                     (apply append (list (search-ranges (take ranges 2048) domains gauge-process)
-                                         (touch f))))))))]))
+                   (search-ranges ranges domains)))))]))
 
 ;------------------------------------DECODE PANEL----------------------------------------
 
@@ -109,6 +105,7 @@
         (λ (canvas dc)
           (send dc draw-bitmap decode-bitmap 20 20))]))
 
+(define revDcs #f)
 (define fractal-matrix (for/vector ([i SIZE]) (make-vector SIZE)))
 (define decode-button
   (new button%
@@ -118,7 +115,9 @@
         (λ (button event)
           (when founds
             (define blocks (decode founds (get-decoding-domains fractal-matrix)))
-            (set! fractal-matrix (cropped-blocks->matrix blocks))))]))
+            (set! fractal-matrix (small-blocks->matrix blocks))
+            (set! revDcs (map exact-round (flatten-matrix fractal-matrix)))
+            (printf "~a\n" (take revDcs 10))))]))
 
 (define (normalize x)
   (set! x (exact-round x))
@@ -127,19 +126,19 @@
 (define (matrix->bytes matrix)
   (list->bytes (apply append (map (λ(x) (list 255 x x x)) (flatten-matrix matrix)))))
 
-(define idcted-matrix #f)
+#|(define idcted-matrix #f)
+(define dcted-blocks #f)
 (define finalize-button
   (new button%
        [parent decode-panel]
        [label "Finalize"]
        [callback
         (λ (button event)
-          (define dcted-blocks (map padd-block (map first (get-ranges fractal-matrix))))
-          (back-DC dcted-blocks DCs)
-          (set! idcted-matrix (blocks->image-matrix (map IDCT dcted-blocks)))
+          (set! dcted-blocks (map first (get-ranges fractal-matrix)))
+          (set! idcted-matrix (small-blocks->matrix dcted-blocks))
           (set! idcted-matrix
                 (for/vector ([i SIZE])
                   (for/vector ([j SIZE])
                     (normalize (matrix-get idcted-matrix i j)))))
           (send decode-bitmap set-argb-pixels 0 0 SIZE SIZE (matrix->bytes idcted-matrix))
-          (send decode-canvas on-paint))]))
+          (send decode-canvas on-paint))]))|#
