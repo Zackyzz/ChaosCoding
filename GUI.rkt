@@ -60,19 +60,24 @@
        [callback
         (λ (button event)
           (define path (get-file #f #f "../Chaos/utils" #f #f null))
-          (when path
-            (set! image-name (last (string-split (path->string path) "\\")))
-            (set! encode-bitmap (read-bitmap path))
-            (send encode-canvas on-paint)
-            (send gauge-process set-value 0)
-            (send encode-bitmap get-argb-pixels 0 0 SIZE SIZE encode-buffer)
-            (set! original-matrix (get-matrix encode-buffer))
-            (define blocks (get-blocks original-matrix))
-            (define dct-blocks (map DCT blocks))
-            (set! DCs (get-coefficients 0 0 dct-blocks))
-            (define DC-blocks (coefs->matrix DCs))
-            (set! ranges (get-ranges DC-blocks))
-            (set! domains (get-domains DC-blocks))))]))
+          (time
+           (when path
+             (set! image-name (last (string-split (path->string path) "\\")))
+             (set! encode-bitmap (read-bitmap path))
+             (send encode-canvas on-paint)
+             (send gauge-process set-value 0)
+             (send encode-bitmap get-argb-pixels 0 0 SIZE SIZE encode-buffer)
+             (set! original-matrix (get-matrix encode-buffer))
+             (define blocks (get-blocks original-matrix))
+             (define dct-blocks (map DCT blocks))
+             (set! DCs
+                   (apply append
+                          (for/list ([i 3])
+                            (for/list ([j 3])
+                              (get-coefficients i j dct-blocks)))))
+             (define DC-blocks (map coefs->matrix DCs))
+             (set! ranges (map get-ranges DC-blocks))
+             (set! domains (map get-domains DC-blocks)))))]))
 
 (define founds #f)
 (define process-button
@@ -84,7 +89,7 @@
           (when (and ranges domains)
             (set! founds
                   (time
-                   (search-ranges ranges domains)))))]))
+                   (for/list ([i ranges] [j domains]) (search-ranges i j))))))]))
 
 ;------------------------------------DECODE PANEL----------------------------------------
 
@@ -105,19 +110,17 @@
         (λ (canvas dc)
           (send dc draw-bitmap decode-bitmap 20 20))]))
 
-(define revDcs #f)
-(define fractal-matrix (for/vector ([i SIZE]) (make-vector SIZE)))
+(define fractal-matrices (for/list ([i 9]) (for/vector ([i SIZE]) (make-vector SIZE))))
 (define decode-button
   (new button%
        [parent decode-panel]
        [label "Decode"]
        [callback
         (λ (button event)
-          (when founds
-            (define blocks (decode founds (get-decoding-domains fractal-matrix)))
-            (set! fractal-matrix (small-blocks->matrix blocks))
-            (set! revDcs (map exact-round (flatten-matrix fractal-matrix)))
-            (printf "~a\n" (take revDcs 10))))]))
+          (time
+           (when founds
+             (define blocks (for/list ([i founds] [j fractal-matrices]) (decode i (get-decoding-domains j))))
+             (set! fractal-matrices (map small-blocks->matrix blocks)))))]))
 
 (define (normalize x)
   (set! x (exact-round x))
@@ -126,19 +129,22 @@
 (define (matrix->bytes matrix)
   (list->bytes (apply append (map (λ(x) (list 255 x x x)) (flatten-matrix matrix)))))
 
-#|(define idcted-matrix #f)
-(define dcted-blocks #f)
+(define idcted-matrix #f)
+(define DCT-coefficients #f)
 (define finalize-button
   (new button%
        [parent decode-panel]
        [label "Finalize"]
        [callback
         (λ (button event)
-          (set! dcted-blocks (map first (get-ranges fractal-matrix)))
-          (set! idcted-matrix (small-blocks->matrix dcted-blocks))
-          (set! idcted-matrix
-                (for/vector ([i SIZE])
-                  (for/vector ([j SIZE])
-                    (normalize (matrix-get idcted-matrix i j)))))
-          (send decode-bitmap set-argb-pixels 0 0 SIZE SIZE (matrix->bytes idcted-matrix))
-          (send decode-canvas on-paint))]))|#
+          (time
+           (when fractal-matrices
+             (set! DCT-coefficients (apply map list (for/list ([i fractal-matrices]) (flatten-matrix i))))
+             (define DCT-blocks (map padd-block (map coef->blocks DCT-coefficients)))
+             (set! idcted-matrix (blocks->image-matrix (map IDCT DCT-blocks)))
+             (set! idcted-matrix
+                   (for/vector ([i SIZE])
+                     (for/vector ([j SIZE])
+                       (normalize (matrix-get idcted-matrix i j)))))
+             (send decode-bitmap set-argb-pixels 0 0 SIZE SIZE (matrix->bytes idcted-matrix))
+             (send decode-canvas on-paint))))]))

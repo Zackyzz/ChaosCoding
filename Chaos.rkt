@@ -3,7 +3,7 @@
 
 (define SIZE 512)
 (define C-SIZE 64)
-(define TL 4)
+(define TL 2)
 (define n (sqr TL))
 
 (define (matrix-get matrix i j)
@@ -74,9 +74,8 @@
               (set! sum (+ sum bi))
               (set! sum^2 (+ sum^2 (sqr bi)))
               bi)))
-        (for/list ([i 8])
-          (list (make-isometry block i)
-                sum sum^2)))))))
+        (list (list block
+                    sum sum^2)))))))
 
 (define (search-range lrange domains)
   (define range (first lrange))
@@ -122,7 +121,7 @@
                      (matrix-get matrix (+ i (+ 1 (* 2 a))) (+ j (* 2 b)))
                      (matrix-get matrix (+ i (+ 1 (* 2 a))) (+ j (+ 1 (* 2 b)))))
                   4))))
-         (for/list ([i 8]) (make-isometry block i))))))))
+         (list block)))))))
 
 (define (decode founds new-domains)
   (for/vector ([i founds])
@@ -148,10 +147,10 @@
     (for/vector ([j TL])
       (matrix-get block i j))))
 
-(define (padd-block block)
+(define (padd-block block [size 3])
   (define new-matrix (for/vector ([i 8]) (make-vector 8)))
-  (for ([i TL])
-    (for ([j TL])
+  (for ([i size])
+    (for ([j size])
       (matrix-set new-matrix i j (matrix-get block i j))))
   new-matrix)
 
@@ -168,6 +167,12 @@
 (define (get-coefficients i j blocks)
   (for/vector ([block blocks])
     (matrix-get block i j)))
+
+(define (coef->blocks coefs [size 3])
+  (set! coefs (list->vector coefs))
+  (for/vector ([i size])
+    (for/vector ([j size])
+      (vector-ref coefs (+ (* i size) j)))))
 
 (define (coefs->matrix vec)
   (for/vector ([i 64])
