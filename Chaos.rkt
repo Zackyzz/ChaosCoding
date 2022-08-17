@@ -3,7 +3,8 @@
 
 (define SIZE 512)
 (define C-SIZE 64)
-(define TL 2)
+(define N-size 2)
+(define TL 4)
 (define n (sqr TL))
 
 (define (matrix-get matrix i j)
@@ -147,7 +148,7 @@
     (for/vector ([j TL])
       (matrix-get block i j))))
 
-(define (padd-block block [size 3])
+(define (padd-block block [size N-size])
   (define new-matrix (for/vector ([i 8]) (make-vector 8)))
   (for ([i size])
     (for ([j size])
@@ -168,7 +169,7 @@
   (for/vector ([block blocks])
     (matrix-get block i j)))
 
-(define (coef->blocks coefs [size 3])
+(define (coef->blocks coefs [size N-size])
   (set! coefs (list->vector coefs))
   (for/vector ([i size])
     (for/vector ([j size])

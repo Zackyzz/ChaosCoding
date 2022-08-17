@@ -11,8 +11,8 @@
 (define frame
   (new frame%
        [label "Fractal Coding"]
-       [x 300] [y 150]
-       [width 1150] [height 675]))
+       [x 250] [y 150]
+       [width 1150] [height 700]))
 
 (send frame show #t)
 
@@ -49,6 +49,7 @@
 (define ranges #f)
 (define domains #f)
 (define DCs #f)
+(define fake-DCs #f)
 (define image-name #f)
 (define encode-buffer (make-bytes (* SIZE SIZE 4)))
 (define original-matrix #f)
@@ -72,9 +73,11 @@
              (define dct-blocks (map DCT blocks))
              (set! DCs
                    (apply append
-                          (for/list ([i 3])
-                            (for/list ([j 3])
+                          (for/list ([i N-size])
+                            (for/list ([j N-size])
                               (get-coefficients i j dct-blocks)))))
+             (set! fake-DCs (for/list ([i DCs]) (vector->list (vector-map (λ(x) (if (positive? x) 1 -1)) i))))
+             (set! DCs (for/list ([i DCs]) (vector-map abs i)))
              (define DC-blocks (map coefs->matrix DCs))
              (set! ranges (map get-ranges DC-blocks))
              (set! domains (map get-domains DC-blocks)))))]))
@@ -110,7 +113,7 @@
         (λ (canvas dc)
           (send dc draw-bitmap decode-bitmap 20 20))]))
 
-(define fractal-matrices (for/list ([i 9]) (for/vector ([i SIZE]) (make-vector SIZE))))
+(define fractal-matrices (for/list ([i (sqr N-size)]) (for/vector ([i SIZE]) (make-vector SIZE))))
 (define decode-button
   (new button%
        [parent decode-panel]
@@ -139,12 +142,43 @@
         (λ (button event)
           (time
            (when fractal-matrices
-             (set! DCT-coefficients (apply map list (for/list ([i fractal-matrices]) (flatten-matrix i))))
-             (define DCT-blocks (map padd-block (map coef->blocks DCT-coefficients)))
+             (set! DCT-coefficients (for/list ([i fractal-matrices]) (flatten-matrix i)))
+             (define signed-DCs
+               (apply map list (for/list ([i DCT-coefficients] [j fake-DCs]) (map * i j))))
+             (define DCT-blocks (map padd-block (map coef->blocks signed-DCs)))
              (set! idcted-matrix (blocks->image-matrix (map IDCT DCT-blocks)))
              (set! idcted-matrix
                    (for/vector ([i SIZE])
                      (for/vector ([j SIZE])
                        (normalize (matrix-get idcted-matrix i j)))))
-             (send decode-bitmap set-argb-pixels 0 0 SIZE SIZE (matrix->bytes idcted-matrix))
-             (send decode-canvas on-paint))))]))
+             (send psnr-field set-value (number->string (PSNR original-matrix idcted-matrix)))
+             (send mae-field set-value (number->string (MAE original-matrix idcted-matrix))))
+           (send decode-bitmap set-argb-pixels 0 0 SIZE SIZE (matrix->bytes idcted-matrix))
+           (send decode-canvas on-paint)))]))
+
+(define (PSNR original decoded)
+  (set! original (flatten-matrix original))
+  (set! decoded (flatten-matrix decoded))
+  (* 10 (log
+         (/ (* SIZE SIZE (sqr (apply max original)))
+            (apply + (map (λ(x y) (sqr (- x y))) original decoded)))
+         10)))
+
+(define (MAE original decoded)
+  (set! original (flatten-matrix original))
+  (set! decoded (flatten-matrix decoded))
+  (/ (apply + (map (λ(x y) (abs (- x y))) original decoded)) (sqr 512.0)))
+
+(define psnr-field
+  (new text-field%
+       [parent decode-panel]
+       [label "PSNR:"]
+       [horiz-margin 150]
+       [init-value ""]))
+
+(define mae-field
+  (new text-field%
+       [parent decode-panel]
+       [label "MAE: "]
+       [horiz-margin 150]
+       [init-value ""]))

@@ -7,12 +7,6 @@
 (define (shift+ vec)
   (vector-map (λ(x) (+ x 128)) vec))
 
-(define (before-storming vec)
-  (vector-map (λ(x) (+ x 2048)) vec))
-
-(define (after-storming vec)
-  (vector-map (λ(x) (- x 2048)) vec))
-
 (define (matrix-get matrix i j)
   (vector-ref (vector-ref matrix i) j))
 
@@ -56,15 +50,6 @@
               (for/vector ([i 8])
                 (for/vector ([j 8])
                   (exact-round (IDCT-pixel block i j))))))
-
-(define 8x8 (vector (vector 124 125 122 120 122 119 117 118)
-                    (vector 121 121 120 119 119 120 120 118)
-                    (vector 126 124 123 122 121 121 120 120)
-                    (vector 124 124 125 125 126 125 124 124)
-                    (vector 127 127 128 129 130 128 127 125)
-                    (vector 143 142 143 142 140 139 139 139)
-                    (vector 150 148 152 152 152 152 150 151)
-                    (vector 156 159 158 155 158 158 157 156)))
 
 (define q-table (vector (vector 16 11 10 16 24 40 51 61)
                         (vector 12 12 14 19 26 58 60 55)
