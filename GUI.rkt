@@ -77,6 +77,7 @@
                             (for/list ([j N-size])
                               (get-coefficients i j dct-blocks)))))
              (set! fake-DCs (for/list ([i DCs]) (vector->list (vector-map (λ(x) (if (positive? x) 1 -1)) i))))
+             (printf "~a\n\n" (for/list ([i DCs]) (vector-length (vector-filter zero? i))))
              (set! DCs (for/list ([i DCs]) (vector-map abs i)))
              (define DC-blocks (map coefs->matrix DCs))
              (set! ranges (map get-ranges DC-blocks))

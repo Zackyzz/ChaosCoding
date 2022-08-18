@@ -3,8 +3,8 @@
 
 (define SIZE 512)
 (define C-SIZE 64)
-(define N-size 2)
-(define TL 4)
+(define N-size 3)
+(define TL 2)
 (define n (sqr TL))
 
 (define (matrix-get matrix i j)
@@ -67,16 +67,17 @@
           (for/vector ([a (in-range TL)])
             (for/vector ([b (in-range TL)])
               (define bi
-                (/ (+ (matrix-get matrix (+ i (* 2 a)) (+ i (* 2 b)))
-                      (matrix-get matrix (+ i (* 2 a)) (+ j (+ 1 (* 2 b))))
-                      (matrix-get matrix (+ i (+ 1 (* 2 a))) (+ j (* 2 b)))
-                      (matrix-get matrix (+ i (+ 1 (* 2 a))) (+ j (+ 1 (* 2 b)))))
-                   4))
+                (quotient (+ (matrix-get matrix (+ i (* 2 a)) (+ i (* 2 b)))
+                             (matrix-get matrix (+ i (* 2 a)) (+ j (+ 1 (* 2 b))))
+                             (matrix-get matrix (+ i (+ 1 (* 2 a))) (+ j (* 2 b)))
+                             (matrix-get matrix (+ i (+ 1 (* 2 a))) (+ j (+ 1 (* 2 b)))))
+                          4))
               (set! sum (+ sum bi))
               (set! sum^2 (+ sum^2 (sqr bi)))
               bi)))
-        (list (list block
-                    sum sum^2)))))))
+        (for/list ([i 8])
+          (list (make-isometry block i)
+                sum sum^2)))))))
 
 (define (search-range lrange domains)
   (define range (first lrange))
@@ -84,7 +85,7 @@
   (define sum-r^2 (third lrange))
   (let loop ([error (expt 2 30)] [index 0] [S 0] [O 0] [domains domains] [it 0])
     [cond
-      [(empty? domains) (list index (exact->inexact S) (exact->inexact O))]
+      [(empty? domains) (list index (exact->inexact S) (exact->inexact O) (exact->inexact error))]
       [else
        (define domain (caar domains))
        (define sum-d (cadar domains))
@@ -117,12 +118,13 @@
          (define block
            (for/vector ([a (in-range TL)])
              (for/vector ([b (in-range TL)])
-               (/ (+ (matrix-get matrix (+ i (* 2 a)) (+ i (* 2 b)))
-                     (matrix-get matrix (+ i (* 2 a)) (+ j (+ 1 (* 2 b))))
-                     (matrix-get matrix (+ i (+ 1 (* 2 a))) (+ j (* 2 b)))
-                     (matrix-get matrix (+ i (+ 1 (* 2 a))) (+ j (+ 1 (* 2 b)))))
-                  4))))
-         (list block)))))))
+               (quotient (exact-round
+                          (+ (matrix-get matrix (+ i (* 2 a)) (+ i (* 2 b)))
+                             (matrix-get matrix (+ i (* 2 a)) (+ j (+ 1 (* 2 b))))
+                             (matrix-get matrix (+ i (+ 1 (* 2 a))) (+ j (* 2 b)))
+                             (matrix-get matrix (+ i (+ 1 (* 2 a))) (+ j (+ 1 (* 2 b))))))
+                         4))))
+         (for/list ([i 8]) (make-isometry block i))))))))
 
 (define (decode founds new-domains)
   (for/vector ([i founds])
