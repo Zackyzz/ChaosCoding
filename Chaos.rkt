@@ -3,8 +3,8 @@
 
 (define SIZE 512)
 (define C-SIZE 64)
-(define N-size 3)
-(define TL 2)
+(define N-size 2)
+(define TL 4)
 (define n (sqr TL))
 
 (define (matrix-get matrix i j)
@@ -67,10 +67,11 @@
           (for/vector ([a (in-range TL)])
             (for/vector ([b (in-range TL)])
               (define bi
-                (quotient (+ (matrix-get matrix (+ i (* 2 a)) (+ i (* 2 b)))
-                             (matrix-get matrix (+ i (* 2 a)) (+ j (+ 1 (* 2 b))))
-                             (matrix-get matrix (+ i (+ 1 (* 2 a))) (+ j (* 2 b)))
-                             (matrix-get matrix (+ i (+ 1 (* 2 a))) (+ j (+ 1 (* 2 b)))))
+                (quotient (exact-round
+                           (+ (matrix-get matrix (+ i (* 2 a)) (+ j (* 2 b)))
+                              (matrix-get matrix (+ i (* 2 a)) (+ j (+ 1 (* 2 b))))
+                              (matrix-get matrix (+ i (+ 1 (* 2 a))) (+ j (* 2 b)))
+                              (matrix-get matrix (+ i (+ 1 (* 2 a))) (+ j (+ 1 (* 2 b))))))
                           4))
               (set! sum (+ sum bi))
               (set! sum^2 (+ sum^2 (sqr bi)))
@@ -119,7 +120,7 @@
            (for/vector ([a (in-range TL)])
              (for/vector ([b (in-range TL)])
                (quotient (exact-round
-                          (+ (matrix-get matrix (+ i (* 2 a)) (+ i (* 2 b)))
+                          (+ (matrix-get matrix (+ i (* 2 a)) (+ j (* 2 b)))
                              (matrix-get matrix (+ i (* 2 a)) (+ j (+ 1 (* 2 b))))
                              (matrix-get matrix (+ i (+ 1 (* 2 a))) (+ j (* 2 b)))
                              (matrix-get matrix (+ i (+ 1 (* 2 a))) (+ j (+ 1 (* 2 b))))))

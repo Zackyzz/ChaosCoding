@@ -39,13 +39,6 @@
         (λ (canvas dc)
           (send dc draw-bitmap encode-bitmap 20 20))]))
 
-(define gauge-process
-  (new gauge%
-       [parent encode-panel]
-       [label ""]
-       [range 2048]
-       [horiz-margin 100]))
-
 (define ranges #f)
 (define domains #f)
 (define DCs #f)
@@ -66,7 +59,6 @@
              (set! image-name (last (string-split (path->string path) "\\")))
              (set! encode-bitmap (read-bitmap path))
              (send encode-canvas on-paint)
-             (send gauge-process set-value 0)
              (send encode-bitmap get-argb-pixels 0 0 SIZE SIZE encode-buffer)
              (set! original-matrix (get-matrix encode-buffer))
              (define blocks (get-blocks original-matrix))
@@ -77,7 +69,6 @@
                             (for/list ([j N-size])
                               (get-coefficients i j dct-blocks)))))
              (set! fake-DCs (for/list ([i DCs]) (vector->list (vector-map (λ(x) (if (positive? x) 1 -1)) i))))
-             (printf "~a\n\n" (for/list ([i DCs]) (vector-length (vector-filter zero? i))))
              (set! DCs (for/list ([i DCs]) (vector-map abs i)))
              (define DC-blocks (map coefs->matrix DCs))
              (set! ranges (map get-ranges DC-blocks))
